@@ -62,12 +62,7 @@ model User {
   accounts            Account[]
   sessions            Session[]
   InvestecIntegration InvestecIntegration?
-
-  // NEW: Changed from `accounts` to `investecBankAccounts`
-  investecBankAccounts InvestecBankAccount[]
-  groupMemberships     GroupMember[]
-
-  Group Group[]
+  isNewUser           Boolean              @default(true)
 }
 
 model InvestecIntegration {
@@ -81,67 +76,4 @@ model InvestecIntegration {
   refreshToken String                @db.Text
   expiresAt    DateTime
   scope        String
-  accounts     InvestecBankAccount[]
-}
-
-model InvestecBankAccount {
-  id                    String              @id @default(cuid())
-  userId                String
-  user                  User                @relation(fields: [userId], references: [id])
-  investecAccountId     String // Investec's unique account ID
-  accountName           String // e.g., "My Cheque Account"
-  accountType           String // e.g., "CHEQUE", "SAVINGS"
-  currency              String
-  investecIntegrationId String
-  investecIntegration   InvestecIntegration @relation(fields: [investecIntegrationId], references: [id])
-
-  transactions    Transaction[]
-  roundupSettings RoundupSetting?
-}
-
-model Group {
-  id        String        @id @default(cuid())
-  name      String
-  creatorId String
-  creator   User          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
-  members   GroupMember[]
-}
-
-model GroupMember {
-  id      String @id @default(cuid())
-  groupId String
-  userId  String
-  group   Group  @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  balance Float  @default(0.0)
-}
-
-model RoundupSetting {
-  id                      String              @id @default(cuid())
-  // NEW: Changed from `accountId` to `investecBankAccountId`
-  investecBankAccountId   String              @unique // The account funds are rounded from
-  // NEW: Changed from `account` to `investecBankAccount`
-  investecBankAccount     InvestecBankAccount @relation(fields: [investecBankAccountId], references: [id])
-  isActive                Boolean             @default(false)
-  roundupToNearest        Float               @default(5.0) // e.g., 5 for R5
-  targetInvestecAccountId String // Investec account ID for savings
-  targetAccountName       String // User-friendly name for the target account
-  lastRoundupDate         DateTime?
-}
-
-model Transaction {
-  id                    String              @id @default(cuid())
-  investecTransactionId String              @unique // Investec's unique transaction ID (might be `transactionId` or derived)
-  // NEW: Changed from `accountId` to `investecBankAccountId`
-  investecBankAccountId String
-  // NEW: Changed from `account` to `investecBankAccount`
-  investecBankAccount   InvestecBankAccount @relation(fields: [investecBankAccountId], references: [id])
-  type                  String // e.g., "DEBIT", "CREDIT"
-  status                String? // e.g., "POSTED"
-  description           String
-  amount                Float
-  postingDate           DateTime
-  valueDate             DateTime?
-  category              String? // User-defined category
-  isRoundupIgnored      Boolean             @default(false) // For roundup exclusions
 }
