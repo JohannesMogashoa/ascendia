@@ -44,14 +44,6 @@ export const authConfig = {
 		 */
 	],
 	adapter: PrismaAdapter(db),
-	events: {
-		createUser: async ({ user }) => {
-			await db.user.update({
-				where: { id: user.id },
-				data: { isNewUser: true },
-			});
-		},
-	},
 	callbacks: {
 		session: async ({ session, user }) => {
 			const dbUser = await db.user.findFirst({
@@ -63,7 +55,6 @@ export const authConfig = {
 				user: {
 					...session.user,
 					id: user.id,
-					isNew: dbUser?.isNewUser,
 				},
 			};
 		},

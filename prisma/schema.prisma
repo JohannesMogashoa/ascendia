@@ -62,7 +62,6 @@ model User {
   accounts            Account[]
   sessions            Session[]
   InvestecIntegration InvestecIntegration?
-  isNewUser           Boolean              @default(true)
 }
 
 model InvestecIntegration {
@@ -73,6 +72,6 @@ model InvestecIntegration {
   clientSecret String                @db.Text // Encrypt this
   apiKey       String                @db.Text // Encrypt this
   accessToken  String?                @db.Text 
-  expiresIn    Int?
+  expiresIn    DateTime?
   scope        String?                @db.Text
 }
