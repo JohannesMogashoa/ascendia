@@ -44,13 +44,28 @@ export const authConfig = {
 		 */
 	],
 	adapter: PrismaAdapter(db),
+	events: {
+		createUser: async ({ user }) => {
+			await db.user.update({
+				where: { id: user.id },
+				data: { isNewUser: true },
+			});
+		},
+	},
 	callbacks: {
-		session: ({ session, user }) => ({
-			...session,
-			user: {
-				...session.user,
-				id: user.id,
-			},
-		}),
+		session: async ({ session, user }) => {
+			const dbUser = await db.user.findFirst({
+				where: { id: user.id },
+			});
+
+			return {
+				...session,
+				user: {
+					...session.user,
+					id: user.id,
+					isNew: dbUser?.isNewUser,
+				},
+			};
+		},
 	},
 } satisfies NextAuthConfig;

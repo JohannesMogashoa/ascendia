@@ -72,8 +72,7 @@ model InvestecIntegration {
   clientId     String                @db.Text
   clientSecret String                @db.Text // Encrypt this
   apiKey       String                @db.Text // Encrypt this
-  accessToken  String                @db.Text 
-  refreshToken String                @db.Text
-  expiresAt    DateTime
-  scope        String
+  accessToken  String?                @db.Text 
+  expiresIn    Int?
+  scope        String?                @db.Text
 }
