@@ -16,6 +16,7 @@ export const env = createEnv({
 		DATABASE_URL: z.string().url(),
 		INVESTEC_HOST: z.string().url(),
 		ENCRYPTION_KEY: z.string(),
+		OPEN_ROUTER_KEY: z.string().optional(),
 		NODE_ENV: z
 			.enum(["development", "test", "production"])
 			.default("development"),
@@ -42,6 +43,7 @@ export const env = createEnv({
 		NODE_ENV: process.env.NODE_ENV,
 		INVESTEC_HOST: process.env.INVESTEC_HOST,
 		ENCRYPTION_KEY: process.env.ENCRYPTION_KEY,
+		OPEN_ROUTER_KEY: process.env.OPEN_ROUTER_KEY,
 	},
 	/**
 	 * Run `build` or `dev` with `SKIP_ENV_VALIDATION` to skip env validation. This is especially
