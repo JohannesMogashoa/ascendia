@@ -1,51 +1,53 @@
 import Link from "next/link";
 import React from "react";
+import { TRPCError } from "@trpc/server";
 import { api } from "~/trpc/server";
-// import { api } from "~/trpc/react";
 import { auth } from "~/server/auth";
 import { redirect } from "next/navigation";
+import { validateInvestecConnection } from "~/server/lib/investec-auth";
 
 export default async function DashboardPage() {
 	const session = await auth();
 
-	const accounts = await api.investec.getAccounts();
+	if (!session || !session.user) {
+		redirect("/");
+	}
 
-	console.log(accounts);
+	if (!(await validateInvestecConnection(session.user.id))) {
+		redirect("/connect");
+	}
 
-	// if (isLoading) {
-	// 	return <div className="p-4">Loading Investec accounts...</div>;
-	// }
+	const response = await api.investec.getAccounts();
 
-	// if (isError) {
-	// 	// If Investec credentials are bad, redirect to connect page
-	// 	if (
-	// 		error.data?.code === "UNAUTHORIZED" &&
-	// 		error.message.includes("credentials")
-	// 	) {
-	// 		return (
-	// 			<div className="p-4 text-red-600">
-	// 				<p>Error: {error.message}</p>
-	// 				<p className="mt-2">
-	// 					Please{" "}
-	// 					<Link
-	// 						href="/connect"
-	// 						className="text-indigo-600 hover:underline"
-	// 					>
-	// 						re-connect your Investec account
-	// 					</Link>
-	// 					.
-	// 				</p>
-	// 			</div>
-	// 		);
-	// 	}
-	// 	return (
-	// 		<div className="p-4 text-red-600">
-	// 			Error fetching accounts: {error.message}
-	// 		</div>
-	// 	);
-	// }
+	if (response instanceof TRPCError) {
+		if (
+			response.code === "UNAUTHORIZED" &&
+			response.message.includes("credentials")
+		) {
+			return (
+				<div className="p-4 text-red-600">
+					<p>Error: {response.message}</p>
+					<p className="mt-2">
+						Please{" "}
+						<Link
+							href="/connect"
+							className="text-indigo-600 hover:underline"
+						>
+							re-connect your Investec account
+						</Link>
+						.
+					</p>
+				</div>
+			);
+		}
+		return (
+			<div className="p-4 text-red-600">
+				Error fetching accounts: {response.message}
+			</div>
+		);
+	}
 
-	if (!accounts || accounts.length === 0) {
+	if (!response || response.length === 0) {
 		return (
 			<div className="flex flex-col w-screen h-screen justify-center items-center">
 				<p>
@@ -62,7 +64,7 @@ export default async function DashboardPage() {
 		<div className="container mx-auto p-4">
 			<h1 className="text-2xl font-bold mb-4">Your Investec Accounts</h1>
 			<ul className="space-y-2">
-				{accounts.map((account) => (
+				{response.map((account) => (
 					<li
 						key={account.accountId}
 						className="bg-white shadow-md rounded-lg p-4"

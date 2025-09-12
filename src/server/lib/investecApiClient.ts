@@ -42,11 +42,11 @@ class ServerInvestecAPIClient {
 
 	/**
 	 * Acquires a new access token using the client_credentials grant type.
-	 * @returns {Promise<{ accessToken: string, expiresIn: number }>}
+	 * @returns {Promise<{ accessToken: string, expiresIn: Date }>}
 	 */
 	async acquireNewAccessToken(): Promise<{
 		accessToken: string;
-		expiresIn: number;
+		expiresIn: Date;
 	}> {
 		try {
 			const authHeader = btoa(`${this.clientId}:${this.clientSecret}`);
@@ -73,7 +73,7 @@ class ServerInvestecAPIClient {
 
 			return {
 				accessToken: access_token,
-				expiresIn: expires_in,
+				expiresIn: new Date(Date.now() + expires_in * 1000),
 			};
 		} catch (error) {
 			console.error("Error acquiring Investec access token:", error);
@@ -110,27 +110,18 @@ class ServerInvestecAPIClient {
 			console.log(
 				"Investec token expired or close to expiry, acquiring new one..."
 			);
-			try {
-				const { accessToken: newAccessToken, expiresIn } =
-					await this.acquireNewAccessToken();
-				accessTokenToUse = newAccessToken;
-				const newExpiry = new Date(Date.now() + expiresIn * 1000);
-				// IMPORTANT: The caller (tRPC procedure) needs to update the DB with this new token/expiry
-				return new TokenRefreshNeededError(newAccessToken, newExpiry);
-			} catch (refreshError) {
-				console.error(
-					"Failed to refresh Investec token:",
-					refreshError
-				);
-				return new Error(
-					"Failed to authenticate with Investec. Please re-check credentials."
-				);
-			}
+
+			const { accessToken: newAccessToken, expiresIn } =
+				await this.acquireNewAccessToken();
+
+			accessTokenToUse = newAccessToken;
+			// IMPORTANT: The caller (tRPC procedure) needs to update the DB with this new token/expiry
+			throw new TokenRefreshNeededError(newAccessToken, expiresIn);
 		}
 
-		const url = `${this.apiBaseUrl}${endpoint}?${new URLSearchParams(
-			searchParams || {}
-		).toString()}`;
+		const url = `${this.apiBaseUrl}${endpoint}?${searchParams ?? ""}`;
+
+		console.log("[INVESTEC] API CALL BEING MADE: ", url);
 
 		try {
 			const response = await fetch(url, {

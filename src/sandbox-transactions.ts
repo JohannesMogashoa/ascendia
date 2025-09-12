@@ -21,6 +21,17 @@ export interface Transaction {
 	uuid: string;
 }
 
+export interface Account {
+	accountId: string;
+	accountNumber: string;
+	accountName: string;
+	referenceName: string;
+	productName: string;
+	kycCompliant: boolean;
+	profileId: string;
+	profileName: string;
+}
+
 export default [
 	{
 		accountId: "3353431574710163189587446",

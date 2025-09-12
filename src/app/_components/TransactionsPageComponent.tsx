@@ -166,16 +166,25 @@ export function TransactionsPageComponent() {
 							View Error
 						</button>
 					) : aiResponse ? (
-						<button
-							className="btn btn-success rounded-full w-64"
-							onClick={() =>
-								document
-									.getElementById("analysis_modal")
-									?.showModal()
-							}
-						>
-							View Analysis
-						</button>
+						<div className="flex gap-3 items-center">
+							<button
+								className="btn btn-success rounded-full w-64"
+								onClick={() =>
+									document
+										.getElementById("analysis_modal")
+										?.showModal()
+								}
+							>
+								View Analysis
+							</button>
+							<button
+								className="btn rounded-full w-64"
+								disabled={isLoading}
+								onClick={() => analyseWithAI()}
+							>
+								{isLoading ? "Analyzing..." : "Analyze with AI"}
+							</button>
+						</div>
 					) : (
 						<button
 							className="btn rounded-full w-64"
