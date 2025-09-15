@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { SignIn } from "./_components/signin-button";
+import { auth } from "~/server/auth";
+import { redirect } from "next/navigation";
 
 export default async function Home() {
+	const session = await auth();
+
+	if (session && session.user) return redirect("/dashboard");
+
 	return (
 		<section className="flex flex-col justify-center items-center h-screen w-screen">
 			<header>

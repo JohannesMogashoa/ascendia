@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @plugin "daisyui" {
-	themes: nord --default, abyss --prefersdark, cupcake, dracula;
+	themes: nord --default, night --prefersdark, cupcake, dracula;
 }
 
 @theme {

@@ -67,23 +67,25 @@ export default async function DashboardPage() {
 				{response.map((account) => (
 					<li
 						key={account.accountId}
-						className="bg-white shadow-md rounded-lg p-4"
+						className="shadow-md p-4 card bg-base-100"
 					>
-						<h2 className="text-xl font-semibold">
-							{account.productName}
-						</h2>
-						<p className="text-gray-700">
-							Account Number: {account.accountNumber}
-						</p>
-						<p className="text-gray-700">
-							Reference: {account.referenceName}
-						</p>
-						<Link
-							href={`/account/${account.accountId}`}
-							className="mt-3 inline-block text-indigo-600 hover:underline"
-						>
-							View Transactions
-						</Link>
+						<div className="card-body">
+							<h2 className="text-xl font-semibold">
+								{account.productName}
+							</h2>
+							<p className="text-gray-700">
+								Account Number: {account.accountNumber}
+							</p>
+							<p className="text-gray-700">
+								Reference: {account.referenceName}
+							</p>
+							<Link
+								href={`/account/${account.accountId}`}
+								className="mt-3 inline-block text-indigo-600 hover:underline"
+							>
+								View Transactions
+							</Link>
+						</div>
 					</li>
 				))}
 			</ul>
