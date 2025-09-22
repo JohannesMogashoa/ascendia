@@ -8,6 +8,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { formatDateForInput, truncateNumber } from "~/shared/utils/formatters";
 
+import { AgCharts } from "ag-charts-react";
 import Link from "next/link";
 import Markdown from "react-markdown";
 import React from "react";
@@ -126,6 +127,43 @@ function AnalysisModal({
 				</div>
 			</div>
 		</dialog>
+	);
+}
+
+function TransactionChart({ transactions }: { transactions: Transaction[] }) {
+	return (
+		<AgCharts
+			className="mb-5 h-96"
+			options={{
+				title: {
+					text: "Transaction Amounts Over Time",
+				},
+				series: [
+					{
+						type: "bubble",
+						xKey: "postingDate",
+						yKey: "amount",
+						sizeKey: "amount",
+						xName: "Date",
+						yName: "Amount",
+						sizeName: "Amount",
+						title: "DEBIT",
+						data: transactions.filter((tx) => tx.type === "DEBIT"),
+					},
+					{
+						type: "bubble",
+						xKey: "postingDate",
+						yKey: "amount",
+						sizeKey: "amount",
+						xName: "Date",
+						yName: "Amount",
+						sizeName: "Amount",
+						title: "CREDIT",
+						data: transactions.filter((tx) => tx.type === "CREDIT"),
+					},
+				],
+			}}
+		/>
 	);
 }
 
@@ -270,7 +308,7 @@ const AccountTransactions = ({ accountId }: { accountId: string }) => {
 				) : (
 					<button
 						className="btn rounded-full w-24 tooltip"
-						disabled={isAiLoading}
+						disabled={isAiLoading || transactions.length === 0}
 						aria-label="Analyze with AI"
 						data-tip="Analyze with AI"
 						onClick={() => analyseWithAI()}
@@ -284,23 +322,28 @@ const AccountTransactions = ({ accountId }: { accountId: string }) => {
 				)}
 			</section>
 			{transactions && transactions.length > 0 ? (
-				<ul className="space-y-2">
-					{transactions.map((tx, idx) => (
-						<li
-							key={idx}
-							className="bg-white shadow-sm rounded-md p-3"
-						>
-							<p className="font-semibold">{tx.description}</p>
-							<p className="text-gray-700">
-								Amount: R{tx.amount.toFixed(2)}
-							</p>
-							<p className="text-gray-500 text-sm">
-								Date: {tx.postingDate}
-							</p>
-							{/* Add more transaction details as needed */}
-						</li>
-					))}
-				</ul>
+				<section>
+					<TransactionChart transactions={transactions} />
+					<ul className="space-y-2">
+						{transactions.map((tx, idx) => (
+							<li
+								key={idx}
+								className="bg-white shadow-sm rounded-md p-3"
+							>
+								<p className="font-semibold">
+									{tx.description}
+								</p>
+								<p className="text-gray-700">
+									Amount: R{tx.amount.toFixed(2)}
+								</p>
+								<p className="text-gray-500 text-sm">
+									Date: {tx.postingDate}
+								</p>
+								{/* Add more transaction details as needed */}
+							</li>
+						))}
+					</ul>
+				</section>
 			) : (
 				<p>No transactions found for this account.</p>
 			)}
