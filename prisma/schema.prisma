@@ -62,6 +62,8 @@ model User {
   accounts            Account[]
   sessions            Session[]
   InvestecIntegration InvestecIntegration?
+
+  TransactionAnalysis TransactionAnalysis[]
 }
 
 model InvestecIntegration {
@@ -74,4 +76,15 @@ model InvestecIntegration {
   accessToken  String?                @db.Text 
   expiresIn    DateTime?
   scope        String?                @db.Text
+}
+
+model TransactionAnalysis {
+    id            String    @id @default(cuid())
+    userId        String
+    user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    fromDate      String
+    toDate        String
+    analysis      String    @db.Text
+    createdAt     DateTime  @default(now())
+    updatedAt     DateTime  @updatedAt
 }

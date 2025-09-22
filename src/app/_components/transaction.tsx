@@ -6,6 +6,7 @@ import {
 	EyeIcon,
 	SparklesIcon,
 } from "@heroicons/react/24/outline";
+import { formatDateForInput, truncateNumber } from "~/shared/utils/formatters";
 
 import Link from "next/link";
 import Markdown from "react-markdown";
@@ -13,7 +14,6 @@ import React from "react";
 import type { Transaction } from "~/sandbox-transactions";
 import { analyseTransactionsWithAI } from "~/server/lib/openai";
 import { api } from "~/trpc/react";
-import { formatDateForInput } from "~/shared/utils/formatters";
 import remarkGfm from "remark-gfm";
 
 function AnalysisError({
@@ -48,6 +48,20 @@ function AnalysisModal({
 	analysis: string;
 	dateRange: string;
 }) {
+	const [saved, setSaved] = React.useState<boolean>(false);
+
+	const saveAnalysisMutation = api.analysis.saveAnalysis.useMutation({
+		onSuccess: (data) => {
+			console.log("Analysis saved:", data);
+			alert("Analysis saved successfully!");
+			setSaved(true);
+		},
+		onError(error, variables, context) {
+			console.error("Error saving analysis:", error);
+			alert("Failed to save analysis. Please try again.");
+		},
+	});
+
 	function downloadMarkdown() {
 		const blob = new Blob([analysis], {
 			type: "text/markdown;charset=utf-8",
@@ -60,6 +74,27 @@ function AnalysisModal({
 		a.click();
 		document.body.removeChild(a);
 		URL.revokeObjectURL(url);
+	}
+
+	async function saveAnalysis() {
+		try {
+			const fromDate = dateRange.split("_")[0];
+			const toDate = dateRange.split("_")[1];
+
+			if (!fromDate || !toDate) {
+				alert("Invalid date range. Cannot save analysis.");
+				return;
+			}
+
+			saveAnalysisMutation.mutateAsync({
+				analysis,
+				fromDate,
+				toDate,
+			});
+		} catch (error) {
+			console.error("Error saving analysis:", error);
+			alert("Failed to save analysis. Please try again.");
+		}
 	}
 
 	return (
@@ -78,6 +113,13 @@ function AnalysisModal({
 				</h3>
 				<Markdown remarkPlugins={[remarkGfm]}>{analysis}</Markdown>
 				<div className="modal-action">
+					<button
+						className="btn"
+						disabled={saved}
+						onClick={() => saveAnalysis()}
+					>
+						Save Analysis
+					</button>
 					<button className="btn" onClick={() => downloadMarkdown()}>
 						Download Analysis
 					</button>
@@ -155,15 +197,9 @@ const AccountTransactions = ({ accountId }: { accountId: string }) => {
 		return <div className="p-4 text-red-600">Error: {error.message}</div>;
 
 	return (
-		<div className="mx-auto p-4 max-w-2/3">
-			<Link
-				href="/dashboard"
-				className="text-indigo-600 hover:underline mb-4 inline-block"
-			>
-				&larr; Back to Dashboard
-			</Link>
+		<div className="mx-auto p-4">
 			<h1 className="text-2xl font-bold mb-4">
-				Transactions for Account: {accountId}
+				Transactions for Account: {truncateNumber(accountId)}
 			</h1>
 			<section className="flex w-full flex-wrap gap-3 items-center justify-between mb-5">
 				<form onSubmit={handleSubmit} className="flex gap-3">
@@ -249,9 +285,9 @@ const AccountTransactions = ({ accountId }: { accountId: string }) => {
 			</section>
 			{transactions && transactions.length > 0 ? (
 				<ul className="space-y-2">
-					{transactions.map((tx) => (
+					{transactions.map((tx, idx) => (
 						<li
-							key={tx.uuid}
+							key={idx}
 							className="bg-white shadow-sm rounded-md p-3"
 						>
 							<p className="font-semibold">{tx.description}</p>

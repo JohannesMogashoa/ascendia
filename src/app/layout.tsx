@@ -3,6 +3,7 @@ import "~/styles/globals.css";
 import { Geist } from "next/font/google";
 import type { Metadata } from "next";
 import { TRPCReactProvider } from "~/trpc/react";
+import TopbarComponent from "./_components/topbar-component";
 
 export const metadata: Metadata = {
 	title: "Ascendia",
@@ -21,7 +22,12 @@ export default function RootLayout({
 	return (
 		<html lang="en" className={`${geist.variable}`}>
 			<body>
-				<TRPCReactProvider>{children}</TRPCReactProvider>
+				<TRPCReactProvider>
+					<TopbarComponent />
+					<main className="container mx-auto my-4 px-4">
+						{children}
+					</main>
+				</TRPCReactProvider>
 			</body>
 		</html>
 	);
