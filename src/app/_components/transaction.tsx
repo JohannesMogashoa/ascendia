@@ -272,6 +272,7 @@ const AccountTransactions = ({ accountId }: { accountId: string }) => {
 						onClick={() =>
 							document
 								.getElementById("analysis_error")
+								// @ts-ignore
 								?.showModal()
 						}
 					>
@@ -286,6 +287,7 @@ const AccountTransactions = ({ accountId }: { accountId: string }) => {
 							onClick={() =>
 								document
 									.getElementById("analysis_modal")
+									// @ts-ignore
 									?.showModal()
 							}
 						>

@@ -2,7 +2,6 @@ import { createCallerFactory, createTRPCRouter } from "~/server/api/trpc";
 
 import { analysisRouter } from "./routers/analysis";
 import { investecRouter } from "./routers/investec";
-import { postRouter } from "~/server/api/routers/post";
 import { userRouter } from "./routers/users";
 
 /**
