@@ -12,7 +12,7 @@ function OnboardUserComponent() {
 
 	const connectToInvestec = api.investec.connect.useMutation({
 		onSuccess: (data) => {
-			if ("success" in data && "message" in data) {
+			if (data.success) {
 				alert(`Success: ${data.message}`);
 				router.push("/dashboard");
 			} else {

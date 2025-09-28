@@ -1,4 +1,4 @@
-export interface Transaction {
+interface Transaction {
 	accountId: string;
 	type: "DEBIT" | "CREDIT";
 	transactionType:
@@ -21,7 +21,7 @@ export interface Transaction {
 	uuid: string;
 }
 
-export interface Account {
+interface Account {
 	accountId: string;
 	accountNumber: string;
 	accountName: string;

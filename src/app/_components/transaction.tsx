@@ -9,12 +9,10 @@ import {
 import { formatDateForInput, truncateNumber } from "~/shared/utils/formatters";
 
 import { AgCharts } from "ag-charts-react";
+import type { InvestecTransaction } from "investec-api";
 import Link from "next/link";
 import Markdown from "react-markdown";
 import React from "react";
-import { TRPCError } from "@trpc/server";
-import type { Transaction } from "~/sandbox-transactions";
-import { analyseTransactionsWithAI } from "~/server/actions/openai";
 import { api } from "~/trpc/react";
 import remarkGfm from "remark-gfm";
 import useAccountTransaction from "~/hooks/useAccountTransaction";
@@ -138,7 +136,11 @@ function AnalysisModal({
 	);
 }
 
-function TransactionChart({ transactions }: { transactions: Transaction[] }) {
+function TransactionChart({
+	transactions,
+}: {
+	transactions: InvestecTransaction[];
+}) {
 	return (
 		<AgCharts
 			className="mb-5 h-96"
