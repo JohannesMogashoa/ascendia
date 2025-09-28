@@ -1,20 +1,17 @@
-import type { Account, Transaction } from "~/sandbox-transactions";
-import ServerInvestecAPIClient, {
-	InvalidInvestecCredentialsError,
-	TokenRefreshNeededError,
-} from "../../lib/investecApiClient";
 import {
-	createTRPCRouter,
-	protectedProcedure,
-	publicProcedure,
-} from "~/server/api/trpc";
-
-import { TRPCError } from "@trpc/server";
-// src/server/api/routers/investec.ts
+	Account,
+	Client,
+	type InvestecAccountBalance,
+	type InvestecTransaction,
+} from "investec-api";
+import { createTRPCRouter, protectedProcedure } from "~/server/api/trpc";
 import { z } from "zod";
+import { authenticateWithInvestec } from "~/server/lib/investec-auth";
+import { encrypt, decrypt } from "~/shared/utils/crypto";
 
 export const investecRouter = createTRPCRouter({
-	// 1. Procedure to save user's Investec credentials and perform initial connection test
+	//#region Connect Endpoint
+
 	connect: protectedProcedure
 		.input(
 			z.object({
@@ -29,162 +26,181 @@ export const investecRouter = createTRPCRouter({
 
 			try {
 				// Instantiate client with user's provided credentials
-				const investecClient = new ServerInvestecAPIClient({
-					clientId,
-					clientSecret,
-					apiKey,
-				});
+				const { access_token, expires_in } =
+					await authenticateWithInvestec(
+						clientId,
+						clientSecret,
+						apiKey
+					);
 
-				// Perform initial token acquisition to test credentials
-				const { accessToken, expiresIn } =
-					await investecClient.acquireNewAccessToken();
+				if (access_token && expires_in) {
+					const encryptedClientId = encrypt(clientId);
+					const encryptedClientSecret = encrypt(clientSecret);
+					const encryptedApiKey = encrypt(apiKey);
 
-				// Persist credentials and tokens to the database
-				await ctx.db.investecIntegration.upsert({
-					where: { userId: userId },
-					create: {
-						clientId: clientId,
-						clientSecret: clientSecret,
-						apiKey: apiKey,
-						accessToken: accessToken,
-						expiresIn: expiresIn,
-						userId: userId,
-					},
-					update: {
-						clientId: clientId,
-						clientSecret: clientSecret,
-						apiKey: apiKey,
-						accessToken: accessToken,
-						expiresIn: expiresIn,
-					},
-				});
+					await ctx.db.investecIntegration.upsert({
+						where: { userId: userId },
+						create: {
+							clientId: encryptedClientId,
+							clientSecret: encryptedClientSecret,
+							apiKey: encryptedApiKey,
+							userId: userId,
+						},
+						update: {
+							clientId: encryptedClientId,
+							clientSecret: encryptedClientSecret,
+							apiKey: encryptedApiKey,
+						},
+					});
+
+					return {
+						success: true,
+						message: "Investec connection established.",
+					};
+				}
 
 				return {
-					success: true,
-					message: "Investec connection established.",
+					success: false,
+					message:
+						"Failed to connect to Investec. Please check your credentials.",
 				};
 			} catch (error) {
-				console.error(
-					"Investec connection failed for user",
-					userId,
-					error
-				);
-				return new TRPCError({
-					code: "BAD_REQUEST",
+				return {
+					success: false,
 					message:
-						error instanceof InvalidInvestecCredentialsError
+						error instanceof Error
 							? error.message
-							: "Failed to connect to Investec. Please check your credentials.",
-					cause: error,
-				});
+							: "An unknown error occurred",
+				};
 			}
 		}),
 
-	// 2. Procedure to get Investec accounts
+	//#endregion
+
+	//#region Get Accounts Endpoint
 	getAccounts: protectedProcedure.query(
-		async ({ ctx }): Promise<Account[] | TRPCError> => {
+		async ({ ctx }): Promise<Account[] | Error> => {
 			const userId = ctx.session.user.id;
 
-			// Retrieve user's Investec credentials and current token from the database
-			const integration = await ctx.db.investecIntegration.findUnique({
-				where: { userId: userId },
-				select: {
-					clientId: true,
-					clientSecret: true,
-					apiKey: true,
-					accessToken: true,
-					expiresIn: true,
-				},
-			});
-
-			if (
-				!integration?.clientId ||
-				!integration?.clientSecret ||
-				!integration?.apiKey
-			) {
-				return new TRPCError({
-					code: "UNAUTHORIZED",
-					message:
-						"Investec credentials not found. Please connect your account.",
-				});
-			}
-
 			try {
-				const investecClient = new ServerInvestecAPIClient({
-					clientId: integration.clientId,
-					clientSecret: integration.clientSecret,
-					apiKey: integration.apiKey,
-				});
-
-				// Attempt to make request, token refresh handled internally by the client
-				const response = await investecClient.makeAuthenticatedRequest(
-					integration.accessToken,
-					integration.expiresIn,
-					"/za/pb/v1/accounts"
+				const integration = await ctx.db.investecIntegration.findUnique(
+					{
+						where: { userId: userId },
+						select: {
+							clientId: true,
+							clientSecret: true,
+							apiKey: true,
+						},
+					}
 				);
 
-				return response.data.accounts as Account[]; // Assuming Investec response structure
+				if (
+					!integration?.clientId ||
+					!integration?.clientSecret ||
+					!integration?.apiKey
+				) {
+					return new Error(
+						"Investec credentials not found. Please connect your account."
+					);
+				}
+
+				const clientId = decrypt(integration.clientId);
+				const clientSecret = decrypt(integration.clientSecret);
+				const apiKey = decrypt(integration.apiKey);
+
+				if (!clientId || !clientSecret || !apiKey) {
+					return new Error(
+						"Failed to decrypt integration information"
+					);
+				}
+
+				const client = await Client.create(
+					clientId,
+					clientSecret,
+					apiKey
+				);
+
+				const accounts = await client.getAccounts();
+
+				return accounts;
 			} catch (error) {
-				// Handle token refresh: if TokenRefreshNeededError is thrown, update DB and re-request
-				if (error instanceof TokenRefreshNeededError) {
-					await ctx.db.investecIntegration.update({
-						where: { userId: userId },
-						data: {
-							accessToken: error.newAccessToken,
-							expiresIn: error.newExpiry,
-						},
-					});
-					// Now that tokens are updated, retry the request
-					const investecClient = new ServerInvestecAPIClient({
-						// Re-instantiate with new token for clarity
-						clientId: integration.clientId,
-						clientSecret: integration.clientSecret,
-						apiKey: integration.apiKey,
-					});
-
-					const accountsData =
-						await investecClient.makeAuthenticatedRequest(
-							error.newAccessToken, // Use the newly acquired token
-							error.newExpiry, // Use the newly acquired expiry
-							"/za/pb/v1/accounts"
-						);
-					return accountsData.data.accounts;
-				}
-
-				// Handle invalid credentials
-				if (error instanceof InvalidInvestecCredentialsError) {
-					// Clear stored credentials if they are permanently invalid
-					await ctx.db.investecIntegration.update({
-						where: { userId: userId },
-						data: {
-							accessToken: null,
-							expiresIn: null,
-						},
-					});
-					return new TRPCError({
-						code: "UNAUTHORIZED",
-						message:
-							"Your Investec credentials are no longer valid. Please re-connect your account.",
-						cause: error,
-					});
-				}
-
-				console.error(
-					"Failed to fetch Investec accounts for user",
-					userId,
-					error
-				);
-
-				return new TRPCError({
-					code: "INTERNAL_SERVER_ERROR",
-					message: "Failed to retrieve Investec accounts.",
-					cause: error,
-				});
+				return new Error("Failed to retrieve Investec accounts.");
 			}
 		}
 	),
+	//#endregion
 
-	// 3. Procedure to get Investec account transactions
+	//#region Get Account Balance
+	getAccountBalance: protectedProcedure
+		.input(
+			z.object({
+				accountId: z.string().min(1, "Account ID is required"),
+			})
+		)
+		.query(
+			async ({ ctx, input }): Promise<InvestecAccountBalance | Error> => {
+				const userId = ctx.session.user.id;
+				const { accountId } = input;
+
+				try {
+					const integration =
+						await ctx.db.investecIntegration.findUnique({
+							where: { userId: userId },
+							select: {
+								clientId: true,
+								clientSecret: true,
+								apiKey: true,
+							},
+						});
+
+					if (
+						!integration?.clientId ||
+						!integration?.clientSecret ||
+						!integration?.apiKey
+					) {
+						return new Error(
+							"Investec credentials not found. Please connect your account."
+						);
+					}
+
+					const clientId = decrypt(integration.clientId);
+					const clientSecret = decrypt(integration.clientSecret);
+					const apiKey = decrypt(integration.apiKey);
+
+					if (!clientId || !clientSecret || !apiKey) {
+						return new Error(
+							"Failed to decrypt integration information"
+						);
+					}
+
+					const client = await Client.create(
+						clientId,
+						clientSecret,
+						apiKey
+					);
+
+					const accounts = await client.getAccounts();
+
+					const account = accounts.find(
+						(a) => a.accountId === accountId
+					);
+
+					const balance = await account?.getBalance();
+					if (!balance) {
+						return new Error(
+							`Failed to retrieve account balance for: ${accountId}`
+						);
+					}
+
+					return balance;
+				} catch (error) {
+					return new Error("Failed to retrieve Investec accounts.");
+				}
+			}
+		),
+	//#endregion
+
+	//#region Get Account Transactions
 	getAccountTransactions: protectedProcedure
 		.input(
 			z.object({
@@ -193,113 +209,71 @@ export const investecRouter = createTRPCRouter({
 				toDate: z.string().optional(), // YYYY-MM-DD
 			})
 		)
-		.query(async ({ ctx, input }): Promise<Transaction[]> => {
-			const userId = ctx.session.user.id;
-			const { accountId, fromDate, toDate } = input;
+		.query(
+			async ({ ctx, input }): Promise<InvestecTransaction[] | Error> => {
+				const userId = ctx.session.user.id;
+				const { accountId, fromDate, toDate } = input;
 
-			const integration = await ctx.db.investecIntegration.findUnique({
-				where: { userId: userId },
-				select: {
-					clientId: true,
-					clientSecret: true,
-					apiKey: true,
-					accessToken: true,
-					expiresIn: true,
-				},
-			});
+				try {
+					const integration =
+						await ctx.db.investecIntegration.findUnique({
+							where: { userId: userId },
+							select: {
+								clientId: true,
+								clientSecret: true,
+								apiKey: true,
+							},
+						});
 
-			if (
-				!integration?.clientId ||
-				!integration?.clientSecret ||
-				!integration?.apiKey
-			) {
-				throw new TRPCError({
-					code: "UNAUTHORIZED",
-					message:
-						"Investec credentials not found. Please connect your account.",
-				});
-			}
+					if (
+						!integration?.clientId ||
+						!integration?.clientSecret ||
+						!integration?.apiKey
+					) {
+						return new Error(
+							"Investec credentials not found. Please connect your account."
+						);
+					}
 
-			try {
-				const investecClient = new ServerInvestecAPIClient({
-					clientId: integration.clientId,
-					clientSecret: integration.clientSecret,
-					apiKey: integration.apiKey,
-				});
+					const clientId = decrypt(integration.clientId);
+					const clientSecret = decrypt(integration.clientSecret);
+					const apiKey = decrypt(integration.apiKey);
 
-				const params: { [key: string]: string } = {};
-				if (fromDate) params.fromDate = fromDate;
-				if (toDate) params.toDate = toDate;
+					if (!clientId || !clientSecret || !apiKey) {
+						return new Error(
+							"Failed to decrypt integration information"
+						);
+					}
 
-				const transactionsData =
-					await investecClient.makeAuthenticatedRequest(
-						integration.accessToken,
-						integration.expiresIn,
-						`/za/pb/v1/accounts/${accountId}/transactions`,
-						{
-							params: new URLSearchParams(params).toString(), // Not directly supported by fetch, will be appended by _request if present
-						}
+					const client = await Client.create(
+						clientId,
+						clientSecret,
+						apiKey
 					);
 
-				return transactionsData.data.transactions as Transaction[];
-			} catch (error) {
-				// Handle TokenRefreshNeededError similarly to getAccounts
-				if (error instanceof TokenRefreshNeededError) {
-					await ctx.db.investecIntegration.update({
-						where: { id: userId },
-						data: {
-							accessToken: error.newAccessToken,
-							expiresIn: error.newExpiry,
-						},
-					});
-					// Retry the request after saving new token
-					const investecClient = new ServerInvestecAPIClient({
-						clientId: integration.clientId,
-						clientSecret: integration.clientSecret,
-						apiKey: integration.apiKey,
+					const accounts = await client.getAccounts();
+
+					const account = accounts.find(
+						(a) => a.accountId === accountId
+					);
+
+					const trans = await account?.getTransactions({
+						fromDate: fromDate,
+						toDate: toDate,
 					});
 
-					const params: { [key: string]: string } = {};
-					if (fromDate) params.fromDate = fromDate;
-					if (toDate) params.toDate = toDate;
-
-					const transactionsData =
-						await investecClient.makeAuthenticatedRequest(
-							error.newAccessToken,
-							error.newExpiry,
-							`/v2/accounts/${accountId}/transactions`,
-							{
-								params: new URLSearchParams(params).toString(),
-							}
+					if (!trans)
+						return new Error(
+							`No transactions found for this account: ${accountId}`
 						);
-					return transactionsData.data.transactions as Transaction[];
-				}
 
-				if (error instanceof InvalidInvestecCredentialsError) {
-					await ctx.db.investecIntegration.update({
-						where: { userId: userId },
-						data: {
-							accessToken: null,
-							expiresIn: null,
-						},
-					});
-					throw new TRPCError({
-						code: "UNAUTHORIZED",
-						message:
-							"Your Investec credentials are no longer valid. Please re-connect your account.",
-						cause: error,
-					});
+					return trans;
+				} catch (error) {
+					return new Error(
+						"Failed to retrieve Investec transactions."
+					);
 				}
-				console.error(
-					"Failed to fetch Investec transactions for user",
-					userId,
-					error
-				);
-				throw new TRPCError({
-					code: "INTERNAL_SERVER_ERROR",
-					message: "Failed to retrieve Investec transactions.",
-					cause: error,
-				});
 			}
-		}),
+		),
+	//#endregion
 });

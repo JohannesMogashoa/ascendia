@@ -12,10 +12,13 @@ import { AgCharts } from "ag-charts-react";
 import Link from "next/link";
 import Markdown from "react-markdown";
 import React from "react";
+import { TRPCError } from "@trpc/server";
 import type { Transaction } from "~/sandbox-transactions";
-import { analyseTransactionsWithAI } from "~/server/lib/openai";
+import { analyseTransactionsWithAI } from "~/server/actions/openai";
 import { api } from "~/trpc/react";
 import remarkGfm from "remark-gfm";
+import useAccountTransaction from "~/hooks/useAccountTransaction";
+import useAiAnalysis from "~/hooks/useAiAnalysis";
 
 function AnalysisError({
 	message,
@@ -45,9 +48,11 @@ function AnalysisError({
 function AnalysisModal({
 	analysis,
 	dateRange,
+	clearAnalysis,
 }: {
 	analysis: string;
 	dateRange: string;
+	clearAnalysis: () => void;
 }) {
 	const [saved, setSaved] = React.useState<boolean>(false);
 
@@ -105,7 +110,10 @@ function AnalysisModal({
 			<div className="modal-box w-11/12 max-w-5xl">
 				<form method="dialog">
 					{/* if there is a button in form, it will close the modal */}
-					<button className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">
+					<button
+						onClick={clearAnalysis}
+						className="btn btn-sm btn-circle btn-ghost absolute right-2 top-2"
+					>
 						✕
 					</button>
 				</form>
@@ -176,66 +184,27 @@ const AccountTransactions = ({ accountId }: { accountId: string }) => {
 	const [toDate, setToDate] = React.useState<string>(
 		formatDateForInput(new Date())
 	);
-	const [transactions, setTransactions] = React.useState<Transaction[]>([]);
-	const [aiResponse, setAiResponse] = React.useState<string | null>(null);
-	const [aiError, setAiError] = React.useState<string | null>(null);
-	const [isAiLoading, setIsAiLoading] = React.useState<boolean>(false);
 
-	const { data, isLoading, isError, error } =
-		api.investec.getAccountTransactions.useQuery(
-			{ accountId: accountId as string },
-			{ enabled: !!accountId } // Only run query if accountId is available
-		);
+	const { error, isLoading, transactions } = useAccountTransaction(
+		accountId,
+		fromDate,
+		toDate
+	);
 
-	function reset() {
-		setAiError(null);
-	}
-
-	async function analyseWithAI() {
-		try {
-			setIsAiLoading(true);
-			var response = await analyseTransactionsWithAI(
-				transactions,
-				fromDate,
-				toDate
-			);
-
-			if (response.error) {
-				setAiError(response.error);
-				setAiResponse(null);
-			} else {
-				setAiResponse(response.data);
-				setAiError(null);
-			}
-		} catch (error) {
-			console.error("Error analyzing transactions with AI:", error);
-			setAiError("Failed to analyze transactions. Please try again.");
-			setAiResponse(null);
-		} finally {
-			setIsAiLoading(false);
-		}
-	}
+	const { aiError, aiResponse, analyseWithAI, isAiLoading, reset } =
+		useAiAnalysis();
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		e.stopPropagation();
-
-		if (!data) return;
-
-		setTransactions(
-			data.filter(
-				(tx) => tx.postingDate >= fromDate && tx.postingDate <= toDate
-			)
-		);
 	}
 
 	if (isLoading) return <div className="p-4">Loading transactions...</div>;
 
-	if (isError && error)
-		return <div className="p-4 text-red-600">Error: {error.message}</div>;
+	if (error) return <div className="p-4 text-red-600">Error: {error}</div>;
 
 	return (
-		<div className="mx-auto p-4">
+		<div className="mx-auto">
 			<h1 className="text-2xl font-bold mb-4">
 				Transactions for Account: {truncateNumber(accountId)}
 			</h1>
@@ -298,7 +267,9 @@ const AccountTransactions = ({ accountId }: { accountId: string }) => {
 							disabled={isAiLoading}
 							data-tip="Re-Analyze with AI"
 							aria-label="Re-Analyze with AI"
-							onClick={() => analyseWithAI()}
+							onClick={() =>
+								analyseWithAI(transactions, fromDate, toDate)
+							}
 						>
 							{isAiLoading ? (
 								<progress className="progress w-6"></progress>
@@ -313,7 +284,9 @@ const AccountTransactions = ({ accountId }: { accountId: string }) => {
 						disabled={isAiLoading || transactions.length === 0}
 						aria-label="Analyze with AI"
 						data-tip="Analyze with AI"
-						onClick={() => analyseWithAI()}
+						onClick={() =>
+							analyseWithAI(transactions, fromDate, toDate)
+						}
 					>
 						{isAiLoading ? (
 							<progress className="progress w-6"></progress>
@@ -353,6 +326,7 @@ const AccountTransactions = ({ accountId }: { accountId: string }) => {
 				<AnalysisModal
 					analysis={aiResponse}
 					dateRange={`${fromDate}_${toDate}`}
+					clearAnalysis={reset}
 				/>
 			)}
 			{aiError && <AnalysisError message={aiError} reset={reset} />}

@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { api } from "~/trpc/server";
 import { auth } from "~/server/auth";
 import { redirect } from "next/navigation";
-import { validateInvestecConnection } from "~/server/lib/investec-auth";
+import { validateInvestecConnection } from "~/server/actions/validate-credentials";
 
 export default async function DashboardPage() {
 	const session = await auth();
@@ -63,11 +63,11 @@ export default async function DashboardPage() {
 	return (
 		<div className="container mx-auto p-4">
 			<h1 className="text-2xl font-bold mb-4">Your Investec Accounts</h1>
-			<ul className="space-y-2">
+			<div className="grid grid-cols-2 gap-x-5">
 				{response.map((account) => (
-					<li
+					<div
 						key={account.accountId}
-						className="shadow-md p-4 card bg-base-100"
+						className="shadow-md p-4 card bg-accent"
 					>
 						<div className="card-body">
 							<h2 className="text-xl font-semibold">
@@ -81,14 +81,14 @@ export default async function DashboardPage() {
 							</p>
 							<Link
 								href={`/account/${account.accountId}`}
-								className="mt-3 inline-block text-indigo-600 hover:underline"
+								className="mt-3 inline-block hover:underline"
 							>
-								View Transactions
+								View your money
 							</Link>
 						</div>
-					</li>
+					</div>
 				))}
-			</ul>
+			</div>
 		</div>
 	);
 }
