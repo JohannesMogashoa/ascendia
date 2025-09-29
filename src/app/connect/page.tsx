@@ -9,7 +9,7 @@ export default async function ConnectPage() {
 	if (!session || !session.user) return redirect("/");
 
 	return (
-		<section className="flex items-center justify-center w-screen h-screen">
+		<section className="flex items-center justify-center">
 			<OnboardUserComponent />
 		</section>
 	);

@@ -1,23 +1,28 @@
 "use server";
 
 import type { ChatCompletionMessageParam } from "openai/resources/index.mjs";
-import { NVIDIA_MODEL } from "~/shared/utils/ai-models";
+import type { InvestecTransaction } from "investec-api";
+import { NVIDIA_MODEL } from "~/shared/utils/constants";
 import OpenAI from "openai";
-import type { Transaction } from "~/sandbox-transactions";
 import { env } from "~/env";
-import { systemMessage } from "./prompts";
+import { systemMessage } from "../lib/prompts";
+
+function getBaseUrl() {
+	if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+	return `http://localhost:${process.env.PORT ?? 3000}`;
+}
 
 const openai = new OpenAI({
 	baseURL: "https://openrouter.ai/api/v1",
 	apiKey: env.OPEN_ROUTER_KEY,
-	// defaultHeaders: {
-	// 	"HTTP-Referer": "<YOUR_SITE_URL>", // Optional. Site URL for rankings on openrouter.ai.
-	// 	"X-Title": "<YOUR_SITE_NAME>", // Optional. Site title for rankings on openrouter.ai.
-	// },
+	defaultHeaders: {
+		"HTTP-Referer": getBaseUrl(), // Optional. Site URL for rankings on openrouter.ai.
+		"X-Title": "Ascendia", // Optional. Site title for rankings on openrouter.ai.
+	},
 });
 
 export async function analyseTransactionsWithAI(
-	transactions: Transaction[],
+	transactions: InvestecTransaction[],
 	fromDate: string,
 	toDate: string
 ) {
@@ -26,7 +31,7 @@ export async function analyseTransactionsWithAI(
 		content: `Here are my recent bank transactions from ${fromDate} to ${toDate}:\n\n${transactions
 			.map(
 				(tx) =>
-					`- ${tx.postingDate}: ${
+					`- transaction type: ${tx.type} on ${tx.postingDate}: ${
 						tx.description
 					} - R${tx.amount.toFixed(2)}`
 			)

@@ -1,45 +1,36 @@
-"use server";
+import { env } from "~/env";
 
-import ServerInvestecAPIClient from "./investecApiClient";
-import { db } from "../db";
+export const authenticateWithInvestec: {
+	(clientId: string, clientSecret: string, apiKey: string): Promise<{
+		access_token: string;
+		token_type: string;
+		expires_in: number;
+		scope: string;
+	}>;
+} = async (clientId: string, clientSecret: string, apiKey: string) => {
+	const myHeaders = new Headers();
+	myHeaders.append("x-api-key", apiKey);
 
-export async function validateInvestecConnection(userId: string) {
-	const investecIntegration = await db.investecIntegration.findUnique({
-		where: { userId },
-		select: {
-			accessToken: true,
-			expiresIn: true,
-			clientId: true,
-			clientSecret: true,
-			apiKey: true,
-		},
-	});
+	const creds = `${clientId}:${clientSecret}`;
+	const basicAuth = `Basic ${btoa(creds)}`;
 
-	if (
-		!investecIntegration ||
-		!investecIntegration.expiresIn ||
-		!investecIntegration.accessToken
-	) {
-		return false;
-	}
+	myHeaders.append("Accept", "application/json");
+	myHeaders.append("Content-Type", "application/x-www-form-urlencoded");
+	myHeaders.append("Authorization", basicAuth);
 
-	if (investecIntegration.expiresIn.getTime() <= Date.now() + 60 * 1000) {
-		const client = new ServerInvestecAPIClient({
-			clientId: investecIntegration.clientId,
-			clientSecret: investecIntegration.clientSecret,
-			apiKey: investecIntegration.apiKey,
-		});
+	const urlencoded = new URLSearchParams();
+	urlencoded.append("grant_type", "client_credentials");
 
-		const { accessToken, expiresIn } = await client.acquireNewAccessToken();
+	const requestOptions: RequestInit = {
+		method: "POST",
+		headers: myHeaders,
+		body: urlencoded,
+	};
 
-		await db.investecIntegration.update({
-			where: { userId },
-			data: {
-				accessToken,
-				expiresIn,
-			},
-		});
-	}
-
-	return true;
-}
+	const response = await fetch(
+		`${env.INVESTEC_HOST}/identity/v2/oauth2/token`,
+		requestOptions
+	);
+	const data = await response.json();
+	return data;
+};

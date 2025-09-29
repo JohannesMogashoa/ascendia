@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { SignIn } from "./_components/signin-button";
 import { auth } from "~/server/auth";
 import { redirect } from "next/navigation";
@@ -9,7 +8,7 @@ export default async function Home() {
 	if (session && session.user) return redirect("/dashboard");
 
 	return (
-		<section className="flex flex-col justify-center items-center h-screen w-screen">
+		<section className="flex flex-col justify-center items-center absolute top-1/2 left-1/2 -translate-1/2">
 			<header>
 				<h1>Welcome to Ascendia</h1>
 			</header>

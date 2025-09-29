@@ -67,24 +67,23 @@ model User {
 }
 
 model InvestecIntegration {
-  id           String                @id @default(cuid())
-  userId       String                @unique
-  user         User                  @relation(fields: [userId], references: [id])
-  clientId     String                @db.Text
-  clientSecret String                @db.Text // Encrypt this
-  apiKey       String                @db.Text // Encrypt this
-  accessToken  String?                @db.Text 
-  expiresIn    DateTime?
-  scope        String?                @db.Text
+    id              String              @id @default(cuid())
+    userId          String              @unique
+    user            User                @relation(fields: [userId], references: [id])
+    clientId        String              @db.Text
+    clientSecret    String              @db.Text // Encrypt this
+    apiKey          String              @db.Text // Encrypt this
+    createdAt       DateTime            @default(now())
+    updatedAt       DateTime?            @updatedAt
 }
 
 model TransactionAnalysis {
-    id            String    @id @default(cuid())
-    userId        String
-    user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-    fromDate      String
-    toDate        String
-    analysis      String    @db.Text
-    createdAt     DateTime  @default(now())
-    updatedAt     DateTime  @updatedAt
+    id              String              @id @default(cuid())
+    userId          String
+    user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+    fromDate        String
+    toDate          String
+    analysis        String              @db.Text
+    createdAt       DateTime            @default(now())
+    updatedAt       DateTime?            @updatedAt
 }
