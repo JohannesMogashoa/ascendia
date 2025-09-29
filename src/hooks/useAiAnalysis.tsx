@@ -1,4 +1,4 @@
-import type { Transaction } from "~/sandbox-transactions";
+import type { InvestecTransaction } from "investec-api";
 import { analyseTransactionsWithAI } from "~/server/actions/openai";
 import { useState } from "react";
 
@@ -13,7 +13,7 @@ const useAiAnalysis = () => {
 	};
 
 	const analyseWithAI = async (
-		transactions: Transaction[],
+		transactions: InvestecTransaction[],
 		fromDate: string,
 		toDate: string
 	) => {

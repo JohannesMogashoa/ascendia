@@ -1,17 +1,16 @@
 import { useEffect, useState } from "react";
 
-import { TRPCError } from "@trpc/server";
-import type { Transaction } from "~/sandbox-transactions";
+import type { InvestecTransaction } from "investec-api";
 import { getTransactions } from "~/server/actions/transactions";
 
 const useAccountTransaction = (
 	accountId: string,
-	fromDate: string | null = null,
-	toDate: string | null = null
+	fromDate?: string,
+	toDate?: string
 ) => {
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
-	const [transactions, setTransactions] = useState<Transaction[]>([]);
+	const [transactions, setTransactions] = useState<InvestecTransaction[]>([]);
 
 	useEffect(() => {
 		const fetchAccountTransactions = async () => {
@@ -25,7 +24,7 @@ const useAccountTransaction = (
 					toDate
 				);
 
-				if (response instanceof TRPCError) {
+				if (response instanceof Error) {
 					setError(response.message);
 					setIsLoading(false);
 					return;

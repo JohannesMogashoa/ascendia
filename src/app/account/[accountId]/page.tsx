@@ -24,11 +24,8 @@ export default async function AccountDetailsPage({
 
 	const response = await api.investec.getAccountBalance({ accountId });
 
-	if (response instanceof TRPCError) {
-		if (
-			response.code === "UNAUTHORIZED" &&
-			response.message.includes("credentials")
-		) {
+	if (response instanceof Error) {
+		if (response.message.includes("credentials")) {
 			return (
 				<div className="p-4 text-red-600">
 					<p>Error: {response.message}</p>

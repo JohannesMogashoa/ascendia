@@ -1,9 +1,9 @@
 "use server";
 
 import type { ChatCompletionMessageParam } from "openai/resources/index.mjs";
+import type { InvestecTransaction } from "investec-api";
 import { NVIDIA_MODEL } from "~/shared/utils/constants";
 import OpenAI from "openai";
-import type { Transaction } from "~/sandbox-transactions";
 import { env } from "~/env";
 import { systemMessage } from "../lib/prompts";
 
@@ -22,7 +22,7 @@ const openai = new OpenAI({
 });
 
 export async function analyseTransactionsWithAI(
-	transactions: Transaction[],
+	transactions: InvestecTransaction[],
 	fromDate: string,
 	toDate: string
 ) {
