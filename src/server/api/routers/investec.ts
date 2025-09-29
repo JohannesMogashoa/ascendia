@@ -33,10 +33,16 @@ export const investecRouter = createTRPCRouter({
 						apiKey
 					);
 
+				console.log(access_token);
+
 				if (access_token && expires_in) {
 					const encryptedClientId = encrypt(clientId);
 					const encryptedClientSecret = encrypt(clientSecret);
 					const encryptedApiKey = encrypt(apiKey);
+
+					console.log("Encrypted Client ID:", encryptedClientId);
+					console.log("Encrypted Secret:", encryptedClientSecret);
+					console.log("Encrypted API Key:", encryptedApiKey);
 
 					await ctx.db.investecIntegration.upsert({
 						where: { userId: userId },
@@ -65,6 +71,7 @@ export const investecRouter = createTRPCRouter({
 						"Failed to connect to Investec. Please check your credentials.",
 				};
 			} catch (error) {
+				console.log(error);
 				return {
 					success: false,
 					message:
