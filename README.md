@@ -1,29 +1,73 @@
-# Create T3 App
+# Ascendia
 
-This is a [T3 Stack](https://create.t3.gg/) project bootstrapped with `create-t3-app`.
+Ascendia is a personal-finance management application built around authenticated financial data, Investec integration, dashboards, and analysis workflows.
 
-## What's next? How do I make an app with this?
+The repository started from the T3 stack, but it now contains application-specific account, connect, dashboard, and analysis experiences together with Prisma persistence and financial/AI integrations.
 
-We try to keep this project as simple as possible, so you can start with just the scaffolding we set up for you, and add additional things later when they become necessary.
+## Current application areas
 
-If you are not familiar with the different technologies used in this project, please refer to the respective docs. If you still are in the wind, please join our [Discord](https://t3.gg/discord) and ask for help.
+```text
+/                 authentication entry point
+/account          account-related experience
+/connect          financial connection flow
+/dashboard        finance dashboard
+/analysis         analysis experience
+/api              application/server endpoints
+```
 
-- [Next.js](https://nextjs.org)
-- [NextAuth.js](https://next-auth.js.org)
-- [Prisma](https://prisma.io)
-- [Drizzle](https://orm.drizzle.team)
-- [Tailwind CSS](https://tailwindcss.com)
-- [tRPC](https://trpc.io)
+Authenticated users are redirected from the landing page to the dashboard.
 
-## Learn More
+## Tech stack
 
-To learn more about the [T3 Stack](https://create.t3.gg/), take a look at the following resources:
+- Next.js 15 + React 19
+- TypeScript
+- NextAuth 5
+- Prisma 6
+- tRPC 11 + TanStack Query
+- Investec API client
+- OpenAI SDK
+- AG Charts
+- TanStack Form
+- Tailwind CSS 4 + daisyUI
+- Zod / SuperJSON
+- Biome
 
-- [Documentation](https://create.t3.gg/)
-- [Learn the T3 Stack](https://create.t3.gg/en/faq#what-learning-resources-are-currently-available) — Check out these awesome tutorials
+## Engineering focus
 
-You can check out the [create-t3-app GitHub repository](https://github.com/t3-oss/create-t3-app) — your feedback and contributions are welcome!
+- authenticated personal-finance workflows;
+- external banking integration through the Investec API;
+- typed server/client communication with tRPC;
+- relational persistence through Prisma;
+- dashboard/chart presentation of financial information;
+- AI-assisted analysis capabilities through OpenAI;
+- environment validation and server-only boundaries for sensitive integrations.
 
-## How do I deploy this?
+## Getting started
 
-Follow our deployment guides for [Vercel](https://create.t3.gg/en/deployment/vercel), [Netlify](https://create.t3.gg/en/deployment/netlify) and [Docker](https://create.t3.gg/en/deployment/docker) for more information.
+```bash
+npm install
+npm run dev
+```
+
+Prisma client generation runs automatically after install. Database helpers are available through:
+
+```bash
+npm run db:generate
+npm run db:push
+npm run db:migrate
+npm run db:studio
+```
+
+Configure the authentication, database, Investec, and OpenAI environment variables required by the parts of the application you are exercising.
+
+## Quality checks
+
+```bash
+npm run typecheck
+npm run check
+npm run build
+```
+
+## Project status
+
+Ascendia should be read as an evolving finance application rather than a generic T3 starter. This README intentionally describes the route and integration architecture visible in the repository without claiming financial features that are not implemented in code.
